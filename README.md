@@ -284,3 +284,24 @@ git push origin feature-name
 <img width="1675" height="935" alt="image" src="https://github.com/user-attachments/assets/e79d0033-b36a-4b8a-b131-471944f58dce" />
 
 ---
+
+Contribution Guidelines
+
+Fork the repository
+
+Create a new branch for your feature:
+
+git checkout -b feature-name
+
+
+Commit your changes:
+
+git commit -m "Add new feature"
+
+
+Push your branch:
+
+git push origin feature-name
+
+
+Open a Pull Request
