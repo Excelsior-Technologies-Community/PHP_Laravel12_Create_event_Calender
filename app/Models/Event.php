@@ -14,7 +14,8 @@ class Event extends Model
         'description',
         'start_time',
         'end_time',
-        'color'
+        'color',
+        'status'
     ];
 
     protected $casts = [
