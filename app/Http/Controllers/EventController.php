@@ -6,6 +6,7 @@ use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EventController extends Controller
 {
@@ -18,7 +19,8 @@ class EventController extends Controller
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('title', 'like', '%' . $request->search . '%')
-                  ->orWhere('description', 'like', '%' . $request->search . '%');
+                    ->orWhere('description', 'like', '%' . $request->search . '%')
+                    ->orWhere('category', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -27,15 +29,16 @@ class EventController extends Controller
 
             if ($request->status == 'today') {
                 $query->whereDate('start_time', Carbon::today());
-            }
-
-            elseif ($request->status == 'upcoming') {
+            } elseif ($request->status == 'upcoming') {
                 $query->where('start_time', '>', now());
-            }
-
-            elseif ($request->status == 'completed') {
+            } elseif ($request->status == 'completed') {
                 $query->where('end_time', '<', now());
             }
+        }
+
+        if ($request->filled('category')) {
+
+            $query->where('category', $request->category);
         }
 
         $eventList = $query->oldest()->paginate(5);
@@ -66,7 +69,7 @@ class EventController extends Controller
 
                 'id' => $event->id,
 
-                'title' => $event->title,
+                'title' => '[' . $event->category . '] ' . $event->title,
 
                 'start' => $event->start_time->toIso8601String(),
 
@@ -75,6 +78,9 @@ class EventController extends Controller
                 'color' => $event->color,
 
                 'description' => $event->description,
+
+                'category' => $event->category,
+
             ];
         });
 
@@ -92,7 +98,45 @@ class EventController extends Controller
 
             'end_time' => 'required|date|after:start_time',
 
+            'category' => 'required|string|max:50',
+
         ])->validate();
+
+        $exists = Event::where(function ($query) use ($request) {
+
+            $query->whereBetween('start_time', [
+
+                $request->start_time,
+
+                $request->end_time
+
+            ])
+
+                ->orWhereBetween('end_time', [
+
+                    $request->start_time,
+
+                    $request->end_time
+
+                ])
+
+                ->orWhere(function ($q) use ($request) {
+
+                    $q->where('start_time', '<=', $request->start_time)
+                        ->where('end_time', '>=', $request->end_time);
+                });
+        })->exists();
+
+        if ($exists) {
+
+            return response()->json([
+
+                'success' => false,
+
+                'message' => 'Another event already exists during this time.'
+
+            ], 422);
+        }
 
         $status = now()->greaterThan($request->end_time)
             ? 'Completed'
@@ -112,9 +156,17 @@ class EventController extends Controller
 
             'status' => $status,
 
+            'category' => $request->category,
+
         ]);
 
-        return response()->json($event);
+        return response()->json([
+
+            'success' => true,
+
+            'event' => $event
+
+        ]);
     }
 
     // Update
@@ -128,7 +180,49 @@ class EventController extends Controller
 
             'end_time' => 'required|date|after:start_time',
 
+            'category' => 'required|string|max:50',
+
         ])->validate();
+
+        $exists = Event::where('id', '!=', $id)
+
+            ->where(function ($query) use ($request) {
+
+                $query->whereBetween('start_time', [
+
+                    $request->start_time,
+
+                    $request->end_time
+
+                ])
+
+                    ->orWhereBetween('end_time', [
+
+                        $request->start_time,
+
+                        $request->end_time
+
+                    ])
+
+                    ->orWhere(function ($q) use ($request) {
+
+                        $q->where('start_time', '<=', $request->start_time)
+                            ->where('end_time', '>=', $request->end_time);
+                    });
+            })
+
+            ->exists();
+
+        if ($exists) {
+
+            return response()->json([
+
+                'success' => false,
+
+                'message' => 'Another event already exists during this time.'
+
+            ], 422);
+        }
 
         $event = Event::findOrFail($id);
 
@@ -150,9 +244,17 @@ class EventController extends Controller
 
             'status' => $status,
 
+            'category' => $request->category,
+
         ]);
 
-        return response()->json($event);
+        return response()->json([
+
+            'success' => true,
+
+            'event' => $event
+
+        ]);
     }
 
     // Delete
@@ -163,5 +265,94 @@ class EventController extends Controller
         return response()->json([
             'success' => true
         ]);
+    }
+
+    public function exportCsv(Request $request)
+    {
+        $query = Event::query();
+
+        if ($request->filled('search')) {
+
+            $query->where(function ($q) use ($request) {
+
+                $q->where('title', 'like', '%' . $request->search . '%')
+                    ->orWhere('description', 'like', '%' . $request->search . '%')
+                    ->orWhere('category', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        if ($request->filled('status')) {
+
+            if ($request->status == 'today') {
+
+                $query->whereDate('start_time', Carbon::today());
+            } elseif ($request->status == 'upcoming') {
+
+                $query->where('start_time', '>', now());
+            } elseif ($request->status == 'completed') {
+
+                $query->where('end_time', '<', now());
+            }
+        }
+
+        if ($request->filled('category')) {
+
+            $query->where('category', $request->category);
+        }
+
+        $events = $query->orderBy('start_time')->get();
+
+        $response = new StreamedResponse(function () use ($events) {
+
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, [
+                'ID',
+                'Title',
+                'Category',
+                'Description',
+                'Start Time',
+                'End Time',
+                'Status',
+                'Color'
+            ]);
+
+            foreach ($events as $event) {
+
+                fputcsv($handle, [
+
+                    $event->id,
+
+                    $event->title,
+
+                    $event->category,
+
+                    $event->description,
+
+                    $event->start_time,
+
+                    $event->end_time,
+
+                    $event->status,
+
+                    $event->color
+
+                ]);
+            }
+
+            fclose($handle);
+        });
+
+        $response->headers->set(
+            'Content-Type',
+            'text/csv'
+        );
+
+        $response->headers->set(
+            'Content-Disposition',
+            'attachment; filename=events.csv'
+        );
+
+        return $response;
     }
 }

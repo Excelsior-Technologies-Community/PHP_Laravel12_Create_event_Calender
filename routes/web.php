@@ -7,6 +7,9 @@ Route::get('/', [EventController::class, 'index'])->name('calendar');
 
 Route::get('/events', [EventController::class, 'getEvents']);
 
+Route::get('/events/export/csv', [EventController::class, 'exportCsv'])
+    ->name('events.export.csv');
+
 Route::post('/events', [EventController::class, 'store']);
 
 Route::put('/events/{id}', [EventController::class, 'update']);
