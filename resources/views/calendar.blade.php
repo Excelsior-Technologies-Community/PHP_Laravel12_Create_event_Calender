@@ -57,24 +57,73 @@
         {{-- CALENDAR --}}
         <div class="calendar-box">
 
-            <button class="btn btn-primary mb-3" onclick="openModal()">Add Event</button>
+            <div class="d-flex justify-content-between mb-3">
+
+                <button class="btn btn-primary" onclick="openModal()">
+                    <i class="fa fa-plus"></i> Add Event
+                </button>
+
+                <a href="{{ route('events.export.csv', request()->query()) }}"
+                    class="btn btn-success">
+
+                    <i class="fa fa-file-csv"></i>
+                    Export CSV
+
+                </a>
+
+            </div>
 
             <div id="calendar"></div>
         </div>
 
         <form method="GET" action="{{ route('calendar') }}" class="row mb-3">
 
-            <div class="col-md-5">
-                <input type="text" name="search" value="{{ request('search') }}" class="form-control"
-                    placeholder="Search Title or Description">
+            <div class="col-md-4">
+                <input
+                    type="text"
+                    name="search"
+                    value="{{ request('search') }}"
+                    class="form-control"
+                    placeholder="Search Title, Description or Category">
             </div>
 
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <select name="status" class="form-select">
+
                     <option value="">All Status</option>
-                    <option value="today" {{ request('status') == 'today' ? 'selected' : '' }}>Today's Events</option>
-                    <option value="upcoming" {{ request('status') == 'upcoming' ? 'selected' : '' }}>Upcoming</option>
-                    <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Completed</option>
+
+                    <option value="today" {{ request('status')=='today' ? 'selected' : '' }}>
+                        Today's Events
+                    </option>
+
+                    <option value="upcoming" {{ request('status')=='upcoming' ? 'selected' : '' }}>
+                        Upcoming
+                    </option>
+
+                    <option value="completed" {{ request('status')=='completed' ? 'selected' : '' }}>
+                        Completed
+                    </option>
+
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select name="category" class="form-select">
+
+                    <option value="">All Categories</option>
+
+                    <option value="Meeting" {{ request('category')=='Meeting'?'selected':'' }}>Meeting</option>
+
+                    <option value="Office" {{ request('category')=='Office'?'selected':'' }}>Office</option>
+
+                    <option value="Birthday" {{ request('category')=='Birthday'?'selected':'' }}>Birthday</option>
+
+                    <option value="Holiday" {{ request('category')=='Holiday'?'selected':'' }}>Holiday</option>
+
+                    <option value="Personal" {{ request('category')=='Personal'?'selected':'' }}>Personal</option>
+
+                    <option value="Exam" {{ request('category')=='Exam'?'selected':'' }}>Exam</option>
+
                 </select>
             </div>
 
@@ -104,6 +153,7 @@
                         <th>Description</th>
                         <th>Start</th>
                         <th>End</th>
+                        <th>Category</th>
                         <th>Status</th>
                         <th>Color</th>
                     </tr>
@@ -111,43 +161,48 @@
 
                 <tbody>
                     @foreach($eventList as $event)
-                        <tr>
-                            <td>{{ $event->id }}</td>
-                            <td>{{ $event->title }}</td>
-                            <td>{{ $event->description }}</td>
-                            <td>{{ $event->start_time->format('d M Y h:i A') }}</td>
-                            <td>{{ $event->end_time->format('d M Y h:i A') }}</td>
-                            <td>
-                                @if($event->status == 'Upcoming')
-                                    <span class="badge bg-warning">Upcoming</span>
-                                @elseif($event->status == 'Completed')
-                                    <span class="badge bg-success">Completed</span>
-                                @else
-                                    <span class="badge bg-primary">{{ $event->status }}</span>
-                                @endif
-                            </td>
-                            <td>
-                                <span class="color-preview" style="background:{{ $event->color }}"></span>
-                            </td>
-                        </tr>
+                    <tr>
+                        <td>{{ $event->id }}</td>
+                        <td>{{ $event->title }}</td>
+                        <td>{{ $event->description }}</td>
+                        <td>{{ $event->start_time->format('d M Y h:i A') }}</td>
+                        <td>{{ $event->end_time->format('d M Y h:i A') }}</td>
+                        <td>
+                            <span class="badge bg-info">
+                                {{ $event->category }}
+                            </span>
+                        </td>
+                        <td>
+                            @if($event->status == 'Upcoming')
+                            <span class="badge bg-warning">Upcoming</span>
+                            @elseif($event->status == 'Completed')
+                            <span class="badge bg-success">Completed</span>
+                            @else
+                            <span class="badge bg-primary">{{ $event->status }}</span>
+                            @endif
+                        </td>
+                        <td>
+                            <span class="color-preview" style="background:{{ $event->color }}"></span>
+                        </td>
+                    </tr>
                     @endforeach
                 </tbody>
             </table>
 
             @if ($eventList->lastPage() > 1)
-                <nav class="mt-3">
-                    <ul class="pagination justify-content-center">
+            <nav class="mt-3">
+                <ul class="pagination justify-content-center">
 
-                        @for ($i = 1; $i <= $eventList->lastPage(); $i++)
-                            <li class="page-item {{ $eventList->currentPage() == $i ? 'active' : '' }}">
-                                <a class="page-link" href="{{ $eventList->url($i) }}">
-                                    {{ $i }}
-                                </a>
-                            </li>
+                    @for ($i = 1; $i <= $eventList->lastPage(); $i++)
+                        <li class="page-item {{ $eventList->currentPage() == $i ? 'active' : '' }}">
+                            <a class="page-link" href="{{ $eventList->url($i) }}">
+                                {{ $i }}
+                            </a>
+                        </li>
                         @endfor
 
-                    </ul>
-                </nav>
+                </ul>
+            </nav>
             @endif
         </div>
 
@@ -172,6 +227,22 @@
                         <input type="text" id="title" class="form-control mb-2" placeholder="Title">
 
                         <textarea id="description" class="form-control mb-2" placeholder="Description"></textarea>
+
+                        <select id="category" class="form-select mb-2">
+
+                            <option value="Meeting">Meeting</option>
+
+                            <option value="Office">Office</option>
+
+                            <option value="Birthday">Birthday</option>
+
+                            <option value="Holiday">Holiday</option>
+
+                            <option value="Personal">Personal</option>
+
+                            <option value="Exam">Exam</option>
+
+                        </select>
 
                         <input type="datetime-local" id="start_time" class="form-control mb-2">
 
@@ -211,7 +282,7 @@
 
         document.getElementById('colorPreview').style.background = "#3490dc";
 
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
 
             const calendarEl = document.getElementById('calendar');
 
@@ -231,7 +302,7 @@
 
                 editable: false,
 
-                select: function (info) {
+                select: function(info) {
 
                     openModal();
 
@@ -239,13 +310,13 @@
                         info.start.toISOString().slice(0, 16);
 
                     document.getElementById('end_time').value =
-                        info.end
-                            ? info.end.toISOString().slice(0, 16)
-                            : info.start.toISOString().slice(0, 16);
+                        info.end ?
+                        info.end.toISOString().slice(0, 16) :
+                        info.start.toISOString().slice(0, 16);
 
                 },
 
-                eventClick: function (info) {
+                eventClick: function(info) {
 
                     currentEventId = info.event.id;
 
@@ -259,15 +330,18 @@
                     document.getElementById('description').value =
                         info.event.extendedProps.description || "";
 
+                    document.getElementById('category').value =
+                        info.event.extendedProps.category;
+
                     document.getElementById('start_time').value =
-                        info.event.start
-                            ? info.event.start.toISOString().slice(0, 16)
-                            : "";
+                        info.event.start ?
+                        info.event.start.toISOString().slice(0, 16) :
+                        "";
 
                     document.getElementById('end_time').value =
-                        info.event.end
-                            ? info.event.end.toISOString().slice(0, 16)
-                            : info.event.start.toISOString().slice(0, 16);
+                        info.event.end ?
+                        info.event.end.toISOString().slice(0, 16) :
+                        info.event.start.toISOString().slice(0, 16);
 
                     document.getElementById('color').value =
                         info.event.backgroundColor;
@@ -283,14 +357,14 @@
 
             calendar.render();
 
-            document.getElementById('color').addEventListener('input', function () {
+            document.getElementById('color').addEventListener('input', function() {
 
                 document.getElementById('colorPreview').style.background =
                     this.value;
 
             });
 
-            document.getElementById('saveBtn').addEventListener('click', function () {
+            document.getElementById('saveBtn').addEventListener('click', function() {
 
                 if (document.getElementById('title').value.trim() == "") {
                     alert("Please enter event title");
@@ -313,6 +387,8 @@
 
                     description: document.getElementById('description').value,
 
+                    category: document.getElementById('category').value,
+
                     start_time: document.getElementById('start_time').value,
 
                     end_time: document.getElementById('end_time').value,
@@ -333,23 +409,32 @@
 
                 fetch(url, {
 
-                    method: method,
+                        method: method,
 
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": csrf,
-                        "Accept": "application/json"
-                    },
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": csrf,
+                            "Accept": "application/json"
+                        },
 
-                    body: JSON.stringify(data)
+                        body: JSON.stringify(data)
 
-                })
+                    })
 
-                    .then(response => {
+                    .then(async response => {
+
+                        const data = await response.json();
+
                         if (!response.ok) {
-                            throw new Error("Something went wrong");
+
+                            alert(data.message ?? "Something went wrong.");
+
+                            throw new Error();
+
                         }
-                        return response.json();
+
+                        return data;
+
                     })
 
                     .then(data => {
@@ -362,14 +447,14 @@
 
                     .catch(error => {
 
-                        console.log(error);
+                        console.error(error);
 
                     });
 
             });
 
             // Delete Event
-            document.getElementById('deleteBtn').addEventListener('click', function () {
+            document.getElementById('deleteBtn').addEventListener('click', function() {
 
                 if (!currentEventId) {
                     return;
@@ -379,20 +464,29 @@
 
                     fetch("/events/" + currentEventId, {
 
-                        method: "DELETE",
+                            method: "DELETE",
 
-                        headers: {
-                            "X-CSRF-TOKEN": csrf,
-                            "Accept": "application/json"
-                        }
-
-                    })
-
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error("Something went wrong");
+                            headers: {
+                                "X-CSRF-TOKEN": csrf,
+                                "Accept": "application/json"
                             }
-                            return response.json();
+
+                        })
+
+                        .then(async response => {
+
+                            const data = await response.json();
+
+                            if (!response.ok) {
+
+                                alert(data.message ?? "Unable to delete event.");
+
+                                throw new Error();
+
+                            }
+
+                            return data;
+
                         })
 
                         .then(data => {
@@ -430,6 +524,8 @@
 
             document.getElementById('colorPreview').style.background = "#3490dc";
 
+            document.getElementById('category').value = "Meeting";
+            
             modal.show();
 
         }
